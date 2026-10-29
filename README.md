@@ -17,8 +17,9 @@ Together, these tools make the terminal a configurable workspace for interactive
 ## Quick links
 
 | Section | Description |
-|---|---|
+|:---:|:---:|
 | [Requirements](#requirements) | Software to install before setup |
+| [Install Carapace](#install-carapace) | Install and enable shell completions |
 | [Installation](#installation) | Clone, configure, and install the project |
 | [Configuration files](#configuration-files) | Where the files are installed |
 | [Enable the Zsh plugin](#enable-the-zsh-plugin) | Add the plugin to `~/.zshrc` |
@@ -35,6 +36,34 @@ Install these tools before setting up the project:
 - Zsh
 - Carapace
 - Ntux
+
+## Install Carapace
+
+Install Carapace using the package manager for your platform. For example:
+
+```sh
+# Ubuntu / Debian
+sudo apt install carapace-bin
+
+# macOS (Homebrew)
+brew install carapace
+
+# Arch Linux (AUR)
+yay -S carapace-bin
+```
+
+To enable Carapace in Zsh, add these lines to `~/.zshrc`:
+
+```sh
+autoload -U compinit && compinit
+source <(carapace _carapace)
+```
+
+Reload your Zsh configuration to apply the changes:
+
+```sh
+source "$HOME/.zshrc"
+```
 
 ## Installation
 
