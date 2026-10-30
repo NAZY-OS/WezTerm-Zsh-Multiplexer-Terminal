@@ -1,92 +1,208 @@
-# Enable Powerlevel10k instant prompt. Should stay close to the top of ~/.zshrc.
-# Initialization code that may require console input (password prompts, [y/n]
-# confirmations, etc.) must go above this block; everything else may go below.
-if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
-  source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
+# Carapace completions
+export CARAPACE_BRIDGES='zsh,fish,bash,inshellisense'
+
+if (( $+commands[carapace] )); then
+  source <(carapace _carapace)
 fi
 
-# Set up the prompt
+# Enable high-resolution elapsed-time measurement.
+zmodload zsh/datetime
 
-autoload -Uz promptinit
-promptinit
-prompt adam1
+# Notification state.
+# - Send no more than one notification every 5 seconds.
+# - After 5 notifications in 30 seconds, ask whether to pause for 10 minutes.
+typeset -gF 6 _cmd_notify_last_epoch=0
+typeset -ga _cmd_notify_times=()
+typeset -gi _cmd_notifications_paused_until=0
 
-setopt histignorealldups sharehistory
+# Runs immediately before a command starts.
+_command_start() {
+  typeset -gF 6 _cmd_start_epoch=$EPOCHREALTIME
+  typeset -g _cmd_started_at="$(date '+%H:%M:%S')"
+  typeset -g _cmd_text="${1-}"
+  typeset -g _cmd_user="$(id -un)"
+  typeset -g _cmd_shell_pid=$$
 
-# Use emacs keybindings even if our EDITOR is set to vi
-bindkey -e
+  printf '\n\033[1;36mCOMMAND STARTED\033[0m\n'
+  printf '\033[33mUser:       \033[0m%s\n' "$_cmd_user"
+  printf '\033[33mCommand:    \033[0m%s\n' "$_cmd_text"
+  printf '\033[33mStart time: \033[0m%s\n' "$_cmd_started_at"
+  printf '\033[33mShell PID:  \033[0m%s\n' "$_cmd_shell_pid"
+}
 
-# Keep 1000 lines of history within the shell and save it to ~/.zsh_history:
-HISTSIZE=1000
-SAVEHIST=5000
-HISTFILE=~/.zsh_history
+# Runs before the next prompt is displayed.
+_command_end() {
+  local exit_code=$?
 
-# Use modern completion system
-autoload -Uz compinit
-compinit
+  if [[ -n ${_cmd_start_epoch-} ]]; then
+    local -F 6 end_epoch=$EPOCHREALTIME
+    local -F 6 elapsed=$(( end_epoch - _cmd_start_epoch ))
 
-zstyle ':completion:*' auto-description 'specify: %d'
-zstyle ':completion:*' completer _expand _complete _correct _approximate
-zstyle ':completion:*' format 'Completing %d'
-zstyle ':completion:*' group-name ''
-zstyle ':completion:*' menu select=2
-eval "$(dircolors -b)"
-zstyle ':completion:*:default' list-colors ${(s.:.)LS_COLORS}
-zstyle ':completion:*' list-colors ''
-zstyle ':completion:*' list-prompt %SAt %p: Hit TAB for more, or the character to insert%s
-zstyle ':completion:*' matcher-list '' 'm:{a-z}={A-Z}' 'm:{a-zA-Z}={A-Za-z}' 'r:|[._-]=* r:|=* l:|=*'
-zstyle ':completion:*' menu select=long
-zstyle ':completion:*' select-prompt %SScrolling active: current selection at %p%s
-zstyle ':completion:*' use-compctl false
-zstyle ':completion:*' verbose true
+    if (( elapsed >= 3 )); then
+      local ended_at="$(date '+%H:%M:%S')"
+      local -i elapsed_seconds=$(( elapsed ))
+      local duration
+      local result=SUCCESS
 
-zstyle ':completion:*:*:kill:*:processes' list-colors '=(#b) #([0-9]#)*=0=01;31'
-zstyle ':completion:*:kill:*' command 'ps -u $USER -o pid,%cpu,tty,cputime,cmd'
+      (( exit_code == 0 )) || result=FAILED
 
-source /home/vuser01/git/tmux-zsh/notify-info.plugin.zsh
-source /usr/share/zsh-theme-powerlevel10k/powerlevel10k.zsh-theme
-# oder
-[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
+      duration=$(printf '%02d:%02d:%02d' \
+        $(( elapsed_seconds / 3600 )) \
+        $(( (elapsed_seconds % 3600) / 60 )) \
+        $(( elapsed_seconds % 60 )))
 
-# Harmonische Terminalfarben
-typeset -g _C_RESET=$'\033[0m'
-typeset -g _C_PURPLE=$'\033[38;5;141m'
-typeset -g _C_ORANGE=$'\033[38;5;208m'
-typeset -g _C_GREEN=$'\033[38;5;114m'
-typeset -g _C_RED=$'\033[38;5;203m'
-typeset -g _C_DIM=$'\033[38;5;245m'
+      printf '\n\033[1;36m_________________\nEXECUTION INFO\033[0m\n'
+      printf '\033[33mUser:      \033[0m%s\n' "$_cmd_user"
+      printf '\033[33mCommand:   \033[0m%s\n' "$_cmd_text"
+      printf '\033[33mTime:      \033[0m%s → %s | Duration: %s\n' \
+        "$_cmd_started_at" "$ended_at" "$duration"
+      printf '\033[33mShell PID: \033[0m%s\n' "$_cmd_shell_pid"
 
-function zle-line-finish() {
-  if [[ $? -eq 0 ]]; then
-    echo -e "\a"  # Success Signal: Piepton
+      if (( exit_code == 0 )); then
+        printf '\033[33mResult:    \033[32mSUCCESS (exit code %d)\033[0m\n' \
+          "$exit_code"
+      else
+        printf '\033[33mResult:    \033[31mFAILED (exit code %d)\033[0m\n' \
+          "$exit_code"
+      fi
+
+      printf '\033[1;36m_________________\033[0m\n'
+
+      local -i now=$EPOCHSECONDS
+
+      if (( now >= _cmd_notifications_paused_until )); then
+        local -a recent_times=()
+        local timestamp
+
+        for timestamp in "${_cmd_notify_times[@]}"; do
+          (( now - timestamp < 30 )) && recent_times+=("$timestamp")
+        done
+        _cmd_notify_times=("${recent_times[@]}")
+
+        # Ask before sending a fifth notification in the 30-second window.
+        if (( ${#_cmd_notify_times[@]} >= 4 )); then
+          printf '\nPossible notification flood detected. '
+          if read -q 'reply?Pause notifications for 10 minutes? [y/N] '; then
+            _cmd_notifications_paused_until=$(( now + 600 ))
+            _cmd_notify_times=()
+            printf '\nNotifications paused for 10 minutes.\n'
+          else
+            _cmd_notify_times=()
+            printf '\nNotifications will continue.\n'
+          fi
+          print
+        fi
+
+        if (( now >= _cmd_notifications_paused_until )) &&
+           (( $+commands[notify-send] )) &&
+           (( now - _cmd_notify_last_epoch >= 5 )); then
+          _cmd_notify_last_epoch=$now
+          _cmd_notify_times+=("$now")
+
+          notify-send \
+            --app-name='zsh' \
+            --icon=utilities-terminal \
+            --expire-time=0 \
+            "COMMAND $result" \
+            "Command: $_cmd_text
+Time: $_cmd_started_at → $ended_at
+Duration: $duration
+Exit code: $exit_code"
+        fi
+      fi
+    fi
+
+    unset _cmd_start_epoch _cmd_started_at _cmd_text
+    unset _cmd_user _cmd_shell_pid
+  fi
+
+  if (( exit_code == 0 )); then
+    PROMPT='%~ ❯ '
   else
-    echo -e "\a\a"  #Error Signal: Doppeltone
+    PROMPT='%~ ✘ '"$exit_code"' '
   fi
 }
-zle -N zle-line-finish
 
+# Ctrl+T: show the current time in the ZLE message area.
+_show_current_time() {
+  zle -M "$(date '+%H:%M:%S')"
+}
+zle -N _show_current_time
+bindkey '^T' _show_current_time
 
-# Farben definieren
-autoload -U colors && colors
-local red="%F{red}"
-local green="%F{green}"
-local yellow="%F{yellow}"
-local blue="%F{blue}"
-local purple="%F{purple}"
-local orange="%F{orange}"
-local reset="%f"
+# Alt+H: run htop, then return to the command line.
+_run_htop() {
+  zle -I
+  command htop
+  zle redisplay
+}
+zle -N _run_htop
+bindkey '\eh' _run_htop
 
-# PS1: Kompakte, farbige Eingabezeile
-PROMPT='
-${red}%n@%m${reset} ${blue}%~${reset}
-${purple}%T${reset} ${orange}%D{%d.%m.%y}${reset}
-${green}✓${reset} '
+# Alt+Left/Right: move by word.
+bindkey '\eb' backward-word
+bindkey '\e[1;3D' backward-word
+bindkey '\ef' forward-word
+bindkey '\e[1;3C' forward-word
 
-# PS2: Fortsetzungszeile (mehrzeilig)
-PS2='${yellow}...>${reset} '
+# Re-run the most recent history command.
+_rerun_last_command() {
+  zle -I
+  fc -e - -1
+  zle reset-prompt
+}
+zle -N _rerun_last_command
 
-# PS3: Auswahlmenü (z. B. für `select`)
-PS3='${purple}Auswahl:${reset} '
+# Many terminals send ESC + Enter for Alt+Enter.
+# The exact Ctrl+Alt+Enter sequence depends on your terminal.
+bindkey -M emacs $'\e\r' _rerun_last_command
+bindkey -M viins  $'\e\r' _rerun_last_command
 
-# PS4: Debug-Ausgabe (für `set -x`)
-PS4='${red}+${reset} ${blue}%x:%l${reset} '
+autoload -Uz add-zsh-hook
+add-zsh-hook preexec _command_start
+add-zsh-hook precmd _command_end
+
+# Colorful listings (GNU/Linux)
+alias ls='ls --color=auto -X'
+alias lls='ls -ltr --color=auto'
+
+# Time and date
+alias now='date "+%H:%M:%S"'
+alias today='date "+%A, %B %d, %Y"'
+
+# Colorized command output
+alias grep='grep --color=auto'
+alias diff='diff --color=auto'
+
+# Memory and swap usage (GNU/Linux)
+alias mem='free -h'
+alias swap='free -h | awk "NR==1 || /Swap/"'
+
+# Delete files/directories only after two explicit confirmations.
+rm() {
+  if (( $# == 0 )); then
+    printf 'Usage: rm <file-or-directory> [...]\n' >&2
+    return 2
+  fi
+
+  printf 'Targets to permanently delete:\n'
+  printf '  %q\n' "$@"
+
+  local answer
+
+  printf '\nAre you sure you want to delete these targets? Type yes to continue: '
+  IFS= read -r answer || return 1
+  if [[ "$answer" != yes ]]; then
+    printf 'Cancelled.\n'
+    return 1
+  fi
+
+  printf 'Are you really sure? This deletion is permanent. Type yes again: '
+  IFS= read -r answer || return 1
+  if [[ "$answer" != yes ]]; then
+    printf 'Cancelled.\n'
+    return 1
+  fi
+
+  command rm -rf -- "$@"
+}
