@@ -1,6 +1,6 @@
 # WezTerm Zsh Multiplexer Terminal
 
-A keyboard-driven terminal environment for developers who want more than a command prompt. This project brings together WezTerm, Zsh, Carapace, and a Rust-based terminal multiplexer in one configurable workflow.
+A keyboard-driven terminal environment for developers who want more than a command prompt. This project brings together WezTerm, Zsh, Carapace, and RMUX in one configurable workflow.
 
 The setup is designed to make everyday terminal work more focused: use hotkeys to move between panes and sessions, get command-line completions while working in Zsh, and receive a desktop notification when a command takes longer than three seconds. Quick commands such as `cd`, `ls`, `pwd`, and `git status` do not trigger notifications.
 
@@ -8,7 +8,7 @@ The setup is designed to make everyday terminal work more focused: use hotkeys t
 
 - **WezTerm** — A GPU-accelerated, cross-platform terminal emulator configured with Lua.
 - **Zsh and Carapace** — A flexible shell with modern command-line completions.
-- **Ntux** — A Rust-based terminal multiplexer for managing sessions and panes.
+- **RMUX** — A Rust-based terminal multiplexer for managing sessions and panes.
 - **Keyboard-driven workflow** — Hotkeys for moving between panes, windows, and tasks.
 - **Long-running command notifications** — The Zsh plugin can notify you when a command takes more than three seconds, including its exit status.
 
@@ -35,7 +35,7 @@ Install these tools before setting up the project:
 - WezTerm
 - Zsh
 - Carapace
-- Ntux
+- RMUX
 
 ## Install Carapace
 
@@ -149,7 +149,17 @@ The RMUX prefix is `Ctrl+E`. Press the prefix first, then the key listed below.
 | `Ctrl+E`, then `i` | Show the custom hotkey help message |
 | `Ctrl+E`, then `?` | Show RMUX’s built-in key list |
 
-In copy mode, press `v` to start selecting text and `y` to copy the selection and leave copy mode.
+### Scrolling and copy mode
+
+Use the mouse wheel over a pane to scroll through its history. This requires mouse support to be enabled in `~/.config/rmux/rmux.conf`:
+
+```tmux
+set -g mouse on
+```
+
+You can also enter copy mode with `Ctrl+E`, then `e`. In copy mode, use the arrow keys or `Page Up`/`Page Down` to navigate the history. Press `q` to leave copy mode.
+
+To select and copy text in copy mode, press `v` to start selecting, then `y` to copy the selection and leave copy mode.
 
 **Configuration note:** The active split shortcuts are `h` for side-by-side and `v` for top-to-bottom. The help message in `rmux.conf` lists different split keys, so it may not match the active bindings.
 
@@ -178,3 +188,4 @@ source "$HOME/.zshrc"
 ## License
 
 This project is licensed under the GNU General Public License v3.0 only. See the `LICENSE` file for details.
+````_
