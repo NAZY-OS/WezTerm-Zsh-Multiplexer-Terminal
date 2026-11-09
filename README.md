@@ -2,7 +2,7 @@
 
 A keyboard-driven terminal environment for developers who want more than a command prompt. This project brings together WezTerm, Zsh, Carapace, and RMUX in one configurable workflow.
 
-The setup is designed to make everyday terminal work more focused: use hotkeys to move between panes and sessions, get command-line completions while working in Zsh, and receive a desktop notification when a command takes longer than three seconds. Quick commands such as `cd`, `ls`, `pwd`, and `git status` do not trigger notifications.
+Use hotkeys to move between panes and windows, get command-line completions in Zsh, and receive desktop notifications when commands take longer than three seconds. Quick commands such as `cd`, `ls`, `pwd`, and `git status` do not trigger notifications.
 
 ## Features
 
@@ -11,8 +11,6 @@ The setup is designed to make everyday terminal work more focused: use hotkeys t
 - **RMUX** — A Rust-based terminal multiplexer for managing sessions and panes.
 - **Keyboard-driven workflow** — Hotkeys for moving between panes, windows, and tasks.
 - **Long-running command notifications** — The Zsh plugin can notify you when a command takes more than three seconds, including its exit status.
-
-Together, these tools make the terminal a configurable workspace for interactive work and longer-running tasks.
 
 ## Quick links
 
@@ -39,7 +37,7 @@ Install these tools before setting up the project:
 
 ## Install Carapace
 
-Install Carapace using the package manager for your platform. For example:
+Install Carapace using your platform’s package manager. For example:
 
 ```sh
 # Ubuntu / Debian
@@ -52,14 +50,14 @@ brew install carapace
 yay -S carapace-bin
 ```
 
-To enable Carapace in Zsh, add these lines to `~/.zshrc`:
+Enable Carapace in Zsh by adding these lines to `~/.zshrc`:
 
 ```sh
 autoload -U compinit && compinit
 source <(carapace _carapace)
 ```
 
-Reload your Zsh configuration to apply the changes:
+Reload your Zsh configuration:
 
 ```sh
 source "$HOME/.zshrc"
@@ -79,7 +77,7 @@ Choose one of the following installation options.
 
 ### Install with root ownership
 
-To install the files as `root:root`, run both `meson install` and `chown` as a **superuser**. Before running the commands, replace `/home/your-user` with the home directory of the user who cloned the repository and ran `meson setup`.
+To install the files as `root:root`, run both `meson install` and `chown` as a **superuser**. Replace `/home/your-user` with the home directory of the user who cloned the repository and ran `meson setup`.
 
 Switch to a superuser shell while keeping the current working directory, then run:
 
@@ -88,16 +86,16 @@ meson install -C build
 
 USER_HOME=/home/your-user
 chown root:root \
-"$USER_HOME/.wezterm.lua" \
-"$USER_HOME/.config/zsh/plugins/notify-info.plugin.zsh" \
-"$USER_HOME/.config/rmux/rmux.conf"
+  "$USER_HOME/.wezterm.lua" \
+  "$USER_HOME/.config/zsh/plugins/notify-info.plugin.zsh" \
+  "$USER_HOME/.config/rmux/rmux.conf"
 ```
 
 Do not run `meson setup` as a superuser. It needs to use the regular user’s home directory as the installation target.
 
 ### Install as your regular user
 
-If you do not have root access or do not want the files owned by root, run the installation as your **regular user**:
+If you do not have root access or do not want the files owned by root, run:
 
 ```sh
 meson install -C build
@@ -123,7 +121,7 @@ The files will belong to your user and can be edited without root privileges. Sk
 
 ### RMUX
 
-The RMUX prefix is `Ctrl+E`. Press the prefix first, then the key listed below.
+The RMUX prefix is **Ctrl+E**. Press and release the prefix, then press the next key.
 
 | Shortcut | Action |
 |---|---|
@@ -146,22 +144,16 @@ The RMUX prefix is `Ctrl+E`. Press the prefix first, then the key listed below.
 | `Ctrl+E`, then `e` | Enter copy mode |
 | `Ctrl+E`, then `t` | Open a separate WezTerm window |
 | `Ctrl+E`, then `r` | Reload the RMUX configuration |
-| `Ctrl+E`, then `i` | Show the custom hotkey help message |
-| `Ctrl+E`, then `?` | Show RMUX’s built-in key list |
 
 ### Scrolling and copy mode
 
-Use the mouse wheel over a pane to scroll through its history. This requires mouse support to be enabled in `~/.config/rmux/rmux.conf`:
+To scroll through pane history, enter copy mode: press and release **Ctrl+E**, then press **e**. Use the arrow keys or **Page Up/Page Down** to move through the history. Press **q** to leave copy mode.
 
-```tmux
-set -g mouse on
-```
+Mouse-wheel scrolling is enabled by `set -g mouse on` in the RMUX configuration. If your trackpad gesture moves through shell history instead of pane history, use copy mode and the keyboard controls above.
 
-You can also enter copy mode with `Ctrl+E`, then `e`. In copy mode, use the arrow keys or `Page Up`/`Page Down` to navigate the history. Press `q` to leave copy mode.
+In copy mode, press **v** to start selecting text, then **y** to copy the selection and leave copy mode.
 
-To select and copy text in copy mode, press `v` to start selecting, then `y` to copy the selection and leave copy mode.
-
-**Configuration note:** The active split shortcuts are `h` for side-by-side and `v` for top-to-bottom. The help message in `rmux.conf` lists different split keys, so it may not match the active bindings.
+**Configuration note:** The active split shortcuts are `h` for side-by-side and `v` for top-to-bottom. Make sure the help message in `rmux.conf` matches these bindings if you edit it.
 
 ## Configuration files
 
@@ -169,7 +161,7 @@ To select and copy text in copy mode, press `v` to start selecting, then `y` to 
 |---|---|
 | WezTerm configuration | `~/.wezterm.lua` |
 | Zsh notification plugin | `~/.config/zsh/plugins/notify-info.plugin.zsh` |
-| Multiplexer configuration | `~/.config/rmux/rmux.conf` |
+| RMUX configuration | `~/.config/rmux/rmux.conf` |
 
 ## Enable the Zsh plugin
 
@@ -179,7 +171,7 @@ Run this command **once** as your regular user. It appends the plugin-loading li
 echo 'source "$HOME/.config/zsh/plugins/notify-info.plugin.zsh"' >> "$HOME/.zshrc"
 ```
 
-Then open a new shell or reload your Zsh configuration:
+Open a new shell or reload your Zsh configuration:
 
 ```sh
 source "$HOME/.zshrc"
@@ -188,4 +180,3 @@ source "$HOME/.zshrc"
 ## License
 
 This project is licensed under the GNU General Public License v3.0 only. See the `LICENSE` file for details.
-````_
